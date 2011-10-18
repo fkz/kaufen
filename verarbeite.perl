@@ -2,7 +2,9 @@
 
 
 use strict;
+use warnings;
 use Date::Simple ('date');
+use Products;
 
 # Zeichen, die in einem Begriff auftreten dürfen
 my $w = '[\wäöüÄÖÜ,!€\.%]+';
