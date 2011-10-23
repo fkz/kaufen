@@ -3,6 +3,62 @@
 use strict;
 use warnings;
 
+package Taxonomy;
+
+my %taxonomy = ();
+my @taxonomy = ();
+
+sub get {
+  my ($str) = (@_);
+  if ($taxonomy{$str}) { return $taxonomy{$str}; }
+  $taxonomy{$str} = new Taxonomy $str;
+  return $taxonomy{$str};
+}
+
+sub term {
+  return $_[0]->[1];
+}
+
+sub href {
+  return 'T' . $_[0]->[0];
+}
+
+sub description {
+  return $_[0]->[1];
+}
+
+sub description_link {
+  return '<a href="' . $_[0]->href . '">' . $_[0]->[1] . '</a>';
+}
+
+sub taxonomy_from_nr {
+  return $taxonomy[$_[0]];
+}
+
+sub add {
+  my ($str, $item) = @_;
+  my $t = get $str;
+  push @$t, $item;
+  return $t->[0];
+}
+
+sub new {
+  my $self = bless [scalar @taxonomy, $_[1]], $_[0];
+  push @taxonomy, $self;
+  return $self;
+}
+
+sub list {
+  return (values %taxonomy);
+}
+
+sub listProducts {
+  my @a = @{$_[0]};
+  return @a[1..-1];
+}
+
+
+
 # ein bestimmtes Produkt
 package Product;
 
@@ -79,14 +135,15 @@ sub new {
   
   my $self = bless {id => $id2}, $class;
   $products{$id} = $self if $id;
-  shift @proucdts, $self unless $id;
+  push @products, $self unless $id;
   
-  return bless {id => $id2}, $class;
+  return $self;
 }
 
 sub setAttribute {
   my ($self, $attribute) = @_;
-  $self->{$attribute} = 1;
+  my $a = Taxonomy::add $attribute, $self;
+  $self->{$a} = 1;
 }
 
 sub setGewicht {
@@ -103,9 +160,9 @@ sub description {
   my %ich = %{$_[0]};
   my @extra = ();
   for (keys %ich) {
-    next if $_ eq 'id';
-    next if $_ eq 'gewicht';
-    push @extra, $_;
+    next unless /^\d+$/;
+    
+    push @extra, (Taxonomy::taxonomy_from_nr $_)->description;
   }
   
   my $extra = join ' ', @extra;
@@ -115,6 +172,24 @@ sub description {
   }
 
   return "Produkt: $ich{id} ($extra)";
+}
+
+sub description_link {
+  my %ich = %{$_[0]};
+  my @extra = ();
+  for (keys %ich) {
+    next unless /^\d+$/;
+    
+    push @extra, (Taxonomy::taxonomy_from_nr $_)->description_link;
+  }
+  
+  my $extra = join ' ', @extra;
+  
+  if ($ich{gewicht}) {
+    $extra = "Gewicht: $ich{gewicht} $extra";
+  }
+
+  return "<a href='" . $_[0]->href . "'>$ich{id}</a> ($extra)";
 }
 
 sub htmlDescription {
@@ -131,15 +206,27 @@ package Item;
 my @items = ();
 
 sub new {
-  my ($class, $article, $price, $date, $place, $anzahl, $gewicht) = @_;
-  my $self = [ $article, $price, $date, $place, $anzahl, $gewicht, scalar @items ];
+  my ($class, $article, $price, $date, $place, $anzahl, $geschaeft, $gewicht) = @_;
+  my $self = [ $article, $price, $date, $place, $anzahl, $gewicht, scalar @items, $geschaeft ];
   $self = bless $self, $class;
   push @items, $self;
   return $self;
 }
 
+sub geschaeft {
+  return $_[0]->[7];
+}
+
+sub product {
+  return $_[0]->[0];
+}
+
 sub href {
   return "item_" . $_[0]->[6];
+}
+
+sub price {
+  return $_[0]->[1];
 }
 
 sub html {
@@ -167,11 +254,79 @@ sub list {
   return @items;
 }
 
+sub date {
+  return $_[0]->[2];
+}
+
 sub description {
   my $self = shift;
   my $result = $self->[0]->description . "\n";
   if ($self->[5]) { $result .= "Gewicht: $self->[5]\n" };
   return $result;
+}
+
+sub aggregate {
+  my ($description, $footer, @items) = @_;
+  
+  my $price = 0;
+  my $table = '<table><tr><th>Datum</th><th>Geschäft</th><th>Produkt</th><th>Preis</th></tr>';
+  my @pricesPerDay = ();
+  my $startdate = undef;
+  for (sort { $a->date <=> $b->date} @items) {
+    if (!$startdate) $startdate = $_->date;
+    my $diff = $_->date - $startdate;
+    @pricesPerDay[$diff] += $_->price;
+    $price += $_->price;
+    $table .= '<tr><td><a href=\'' . $_->date . "'>" . $_->date . '</a></td><td>' . $_->geschaeft . '</td><td>' . $_->product->description_link . '</td>' .
+     '<td>' . $_->price . '€</td></tr>';
+  }
+  $table .= '</table>';
+
+  my $list = '<table><tr><th>Datum</th><tr><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th></tr>';
+  my $weekstart = $startdate->day_of_week;
+  my $week = $startdate - $weekstart;
+  my $endofline = 1;
+  if ($weekstart > 0) {
+    $list .= '<tr><td>' . $week . '</td>';
+    $list .= "<td col-span='$weekstart'></td>";
+    $endofline = 0;
+  }
+
+  for (@pricesPerDay) {
+    if ($startdate == 0) {
+      $list .= '<tr><td>' . $startdate . '</td>';
+      $endofline = 0;
+    }
+    
+    $list .= "<td>$_</td>";
+    
+    if ($startdate == 6) {
+      $list .= '</tr>';
+      $endofline = 1;
+    }
+    ++$startdate;
+  }
+
+  if (!$endofline) { $list .= '</tr>'; }
+  $list .= '</table>';
+  
+
+  my $intro = "Produktanzahl: " . scalar @items . "<br />Gesamtpreis: " . $price;
+
+  return <<HERE
+<?xml version="1.0" encoding="utf8" ?>
+<!DOCTYPE html PUBLIC
+  "-//W3C//DTD XHTML 1.1//EN"
+  "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>$description</title></head><body>
+<h1>$description</h1>
+<div>$intro</div>
+$table
+$footer
+</body>
+</html> 
+HERE
 }
 
 package Products;

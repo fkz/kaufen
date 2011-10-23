@@ -74,7 +74,7 @@ while (<>) {
       $product->setAttribute ($_);
     }
     
-    new Item ($product, $article{Preis}, $actual{Datum}, $actual{Ort}, 1, undef);
+    new Item ($product, $article{Preis}, $actual{Datum}, $actual{Ort}, 1, $actual{'Geschäft'}, undef);
   }
   else {
     /^\s*$/ or error $line, "$_ wurde nicht verarbeitet!";
@@ -100,9 +100,23 @@ for (Product::list) {
 
 my $Preis = 0;
 
+my %dates;
+my %months;
+
 for (Item::list) {
   print $_->description;
+  push @{$dates{$_->date}}, $_;
+  push @{$months{$_->date->year . '-' . $_->date->month}}, $_;
 }
+
+for (\%dates, \%months) {
+  my %d = %$_;
+  for (keys %d) {
+    open my $fh, ">", $_;
+    print $fh Item::aggregate ("Produkte vom " . $_, "", @{$d{$_}});
+  }
+}
+
 
 #for (@articles) {
 #  my %article = %$_;
