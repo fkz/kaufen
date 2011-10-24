@@ -117,6 +117,11 @@ for (\%dates, \%months) {
   }
 }
 
+for (Taxonomy::list) {
+  open my $fh, ">", $_->href;
+  print $fh $_->html;
+}
+
 
 #for (@articles) {
 #  my %article = %$_;

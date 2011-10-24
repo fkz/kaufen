@@ -54,7 +54,21 @@ sub list {
 
 sub listProducts {
   my @a = @{$_[0]};
-  return @a[1..-1];
+  return @a[2..$#a];
+}
+
+sub html {
+  my ($self) = @_;
+  my $description = "Wortform " . term ($_[0]);
+  my @items = ();
+
+  for ($self->listProducts) {
+    push @items, $_->item;
+  }
+
+  my $footer = '';
+
+  return Item::aggregate ($description, $footer, @items);
 }
 
 
@@ -133,11 +147,21 @@ sub new {
     }
   }
   
-  my $self = bless {id => $id2}, $class;
+  my $self = bless {id => $id2, items => []}, $class;
   $products{$id} = $self if $id;
   push @products, $self unless $id;
   
   return $self;
+}
+
+sub setItem {
+  my ($self, $item) = @_;
+  push @{$self->{items}}, $item;
+}
+
+sub item {
+  my ($self) = @_;
+  return @{$self->{items}};
 }
 
 sub setAttribute {
@@ -209,6 +233,7 @@ sub new {
   my ($class, $article, $price, $date, $place, $anzahl, $geschaeft, $gewicht) = @_;
   my $self = [ $article, $price, $date, $place, $anzahl, $gewicht, scalar @items, $geschaeft ];
   $self = bless $self, $class;
+  $article->setItem ($self);
   push @items, $self;
   return $self;
 }
@@ -273,7 +298,7 @@ sub aggregate {
   my @pricesPerDay = ();
   my $startdate = undef;
   for (sort { $a->date <=> $b->date} @items) {
-    if (!$startdate) $startdate = $_->date;
+    if (!$startdate) { $startdate = $_->date; }
     my $diff = $_->date - $startdate;
     @pricesPerDay[$diff] += $_->price;
     $price += $_->price;
@@ -282,25 +307,25 @@ sub aggregate {
   }
   $table .= '</table>';
 
-  my $list = '<table><tr><th>Datum</th><tr><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th></tr>';
+  my $list = '<table><tr><th>Datum</th><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th></tr>';
   my $weekstart = $startdate->day_of_week;
   my $week = $startdate - $weekstart;
   my $endofline = 1;
   if ($weekstart > 0) {
     $list .= '<tr><td>' . $week . '</td>';
-    $list .= "<td col-span='$weekstart'></td>";
+    $list .= "<td colspan='$weekstart'></td>";
     $endofline = 0;
   }
 
   for (@pricesPerDay) {
-    if ($startdate == 0) {
+    if ($startdate->day_of_week == 0) {
       $list .= '<tr><td>' . $startdate . '</td>';
       $endofline = 0;
     }
     
-    $list .= "<td>$_</td>";
+    $list .= "<td><a href='$startdate'>$_</a></td>";
     
-    if ($startdate == 6) {
+    if ($startdate->day_of_week == 6) {
       $list .= '</tr>';
       $endofline = 1;
     }
@@ -310,6 +335,8 @@ sub aggregate {
   if (!$endofline) { $list .= '</tr>'; }
   $list .= '</table>';
   
+
+  if (scalar @pricesPerDay <= 1) { $list = ''; }
 
   my $intro = "Produktanzahl: " . scalar @items . "<br />Gesamtpreis: " . $price;
 
@@ -322,6 +349,7 @@ sub aggregate {
 <head><title>$description</title></head><body>
 <h1>$description</h1>
 <div>$intro</div>
+<div>$list</div>
 $table
 $footer
 </body>
