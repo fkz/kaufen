@@ -11,6 +11,13 @@ sub error {
   print STDERR "Fehler in Zeile $line: $text\n";
 }
 
+sub kategorie {
+  my ($a, $b) = @_;
+  my $a_ = Taxonomy::get $a;
+  my $b_ = Taxonomy::get $b;
+  $a_->category ($b_);
+}
+
 # Zeichen, die in einem Begriff auftreten dürfen
 my $w = '[\wäöüÄÖÜ,!€\.%]+';
 
@@ -38,7 +45,7 @@ while (<>) {
       }
     }
     #synonym $3, $1 if $2 eq '=';
-    #kategorie $3, $1 if $2 eq '~';
+    kategorie $3, $1 if $2 eq '~';
   }
   elsif (/^\s*(($w\s+)*$w)\s*$/) {
     my @words = split /\s+/;

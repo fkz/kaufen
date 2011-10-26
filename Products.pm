@@ -5,6 +5,11 @@ use warnings;
 
 package Taxonomy;
 
+sub category {
+  my ($child, $parent) = (@_);
+  
+}
+
 my %taxonomy = ();
 my @taxonomy = ();
 
@@ -43,7 +48,7 @@ sub add {
 }
 
 sub new {
-  my $self = bless [scalar @taxonomy, $_[1]], $_[0];
+  my $self = bless [scalar @taxonomy, $_[1], [], []], $_[0];
   push @taxonomy, $self;
   return $self;
 }
