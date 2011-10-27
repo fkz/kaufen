@@ -21,7 +21,7 @@ sub kategorie {
 # Zeichen, die in einem Begriff auftreten dürfen
 my $w = '[\wäöüÄÖÜ,!€\.%]+';
 
-my %actual = ();
+my %actual = (Ort => 'Unbekannt');
 
 my $line = 0;
 while (<>) {
@@ -64,8 +64,9 @@ while (<>) {
       }
       elsif (/^(\d+,?\d*)(kg|g)$/) {
 	$article{Gewicht} = $1;
+	my $d2 = $2;
 	$article{Gewicht} =~ s/,/\./;
-	($2 eq 'g') and ($article{Gewicht} /= 1000);
+	($d2 eq 'g') and ($article{Gewicht} /= 1000);
       }
       elsif (/^\d{5,13}$/) {
 	$article{Code} = $_;
