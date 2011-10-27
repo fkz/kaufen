@@ -373,8 +373,8 @@ sub aggregate {
 	$endofline = 0;
       }
       
-      my $std =  $startdate->as_str;
-      $list .= "<td><a href='$std'>$_</a></td>";
+      my $k = $_ || 0;
+      ($list .= "<td><a href='$startdate'>$k</a></td>");
       
       
       if ($startdate->day_of_week == 6) {
