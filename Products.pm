@@ -7,7 +7,8 @@ package Taxonomy;
 
 sub category {
   my ($child, $parent) = (@_);
-  
+  push @{$child->[3]}, $parent;
+  push @{$parent->[2]}, $child;
 }
 
 my %taxonomy = ();
@@ -20,6 +21,16 @@ sub get {
   return $taxonomy{$str};
 }
 
+sub parent {
+  my ($self) = @_;
+  return @{$self->[3]}
+}
+
+sub children {
+  my ($self) = @_;
+  return @{$self->[2]}
+}
+
 sub term {
   return $_[0]->[1];
 }
@@ -29,12 +40,22 @@ sub href {
 }
 
 sub description {
+  my @parents = $_[0]->parent;
+  if (scalar @parents == 1) { return $parents[0]->term . ':' . $_[0]->[1]; }
   return $_[0]->[1];
 }
 
 sub description_link {
-  return '<a href="' . $_[0]->href . '">' . $_[0]->[1] . '</a>';
+  my @parents = $_[0]->parent;
+  my $result = '';
+  if (!$_[1] && scalar @parents == 1) { 
+    $result = '<a href="' . $parents[0]->href . '">' . $parents[0]->term . '</a>' . ':';
+  }
+  
+  return $result . '<a href="' . $_[0]->href . '">' . $_[0]->[1] . '</a>';
 }
+
+
 
 sub taxonomy_from_nr {
   return $taxonomy[$_[0]];
@@ -59,8 +80,23 @@ sub list {
 
 sub listProducts {
   my @a = @{$_[0]};
-  return @a[2..$#a];
+  # liste auch Kinder
+  my @result = @a[4..$#a];
+  for ($_[0]->children) {
+    push @result, $_->listProducts;
+  }
+  # entferne doppelte
+ my @result2 = ();
+ my $actual = 0;
+ for (sort @result) {
+    if ($actual != $_) {
+      $actual = $_;
+      push @result2, $_;
+    }
+ }
+ return @result2;
 }
+
 
 sub html {
   my ($self) = @_;
@@ -71,7 +107,16 @@ sub html {
     push @items, $_->item;
   }
 
-  my $footer = '';
+  my $footer = '<div>Struktur</div><div>';
+  my @parents = $self->parent;
+  my @children = $self->children;
+  #my @par_strs = map { $_->description_link } @parents;
+  #my @ch_strs = map { $_->description_link } @children;
+  #my $par = join @par_strs, ' ';
+
+  $footer .= '<div>Eltern:' . (join ', ', map { $_->description_link (1) } @parents) . '</div>';
+  $footer .= '<div>Kinder:' . (join ', ', map { $_->description_link (1) } @children) . '</div></div>';
+
 
   return Item::aggregate ($description, $footer, @items);
 }
@@ -305,42 +350,43 @@ sub aggregate {
   for (sort { $a->date <=> $b->date} @items) {
     if (!$startdate) { $startdate = $_->date; }
     my $diff = $_->date - $startdate;
-    @pricesPerDay[$diff] += $_->price;
+    $pricesPerDay[$diff] += $_->price;
     $price += $_->price;
     $table .= '<tr><td><a href=\'' . $_->date . "'>" . $_->date . '</a></td><td>' . $_->geschaeft . '</td><td>' . $_->product->description_link . '</td>' .
      '<td>' . $_->price . '€</td></tr>';
   }
   $table .= '</table>';
 
-  my $list = '<table><tr><th>Datum</th><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th></tr>';
-  my $weekstart = $startdate->day_of_week;
-  my $week = $startdate - $weekstart;
-  my $endofline = 1;
-  if ($weekstart > 0) {
-    $list .= '<tr><td>' . $week . '</td>';
-    $list .= "<td colspan='$weekstart'></td>";
-    $endofline = 0;
-  }
-
-  for (@pricesPerDay) {
-    if ($startdate->day_of_week == 0) {
-      $list .= '<tr><td>' . $startdate . '</td>';
+    my $list = '<table><tr><th>Datum</th><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th></tr>';
+    my $weekstart = $startdate->day_of_week;
+    my $week = $startdate - $weekstart;
+    my $endofline = 1;
+    if ($weekstart > 0) {
+      $list .= '<tr><td>' . $week . '</td>';
+      $list .= "<td colspan='$weekstart'></td>";
       $endofline = 0;
     }
-    
-    $list .= "<td><a href='$startdate'>$_</a></td>";
-    
-    if ($startdate->day_of_week == 6) {
-      $list .= '</tr>';
-      $endofline = 1;
+
+    for (@pricesPerDay) {
+      if ($startdate->day_of_week == 0) {
+	$list .= '<tr><td>' . $startdate . '</td>';
+	$endofline = 0;
+      }
+      
+      my $std =  $startdate->as_str;
+      $list .= "<td><a href='$std'>$_</a></td>";
+      
+      
+      if ($startdate->day_of_week == 6) {
+	$list .= '</tr>';
+	$endofline = 1;
+      }
+      ++$startdate;
     }
-    ++$startdate;
-  }
 
-  if (!$endofline) { $list .= '</tr>'; }
-  $list .= '</table>';
+    if (!$endofline) { $list .= '</tr>'; }
+    $list .= '</table>';
   
-
   if (scalar @pricesPerDay <= 1) { $list = ''; }
 
   my $intro = "Produktanzahl: " . scalar @items . "<br />Gesamtpreis: " . $price;
