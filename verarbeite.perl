@@ -110,14 +110,16 @@ my $Preis = 0;
 
 my %dates;
 my %months;
+my @all;
 
 for (Item::list) {
   print $_->description;
   push @{$dates{$_->date}}, $_;
   push @{$months{$_->date->year . '-' . $_->date->month}}, $_;
+  push @all, $_;
 }
 
-for (\%dates, \%months) {
+for (\%dates, \%months, { 'all' => \@all }) {
   my %d = %$_;
   for (keys %d) {
     open my $fh, ">", $_;
@@ -129,6 +131,18 @@ for (Taxonomy::list) {
   open my $fh, ">", $_->href;
   print $fh $_->html;
 }
+
+open my $index, ">", "index.html";
+print $index <<HALLO
+<?xml version="1.0" encoding="utf8" ?>
+<!DOCTYPE html PUBLIC
+  "-//W3C//DTD XHTML 1.1//EN"
+  "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>Produkte</title></head><body>
+<a href='all'>Alle Produkte</a>
+</body></html>
+HALLO
 
 
 #for (@articles) {

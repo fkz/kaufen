@@ -357,7 +357,7 @@ sub aggregate {
   }
   $table .= '</table>';
 
-    my $list = '<table><tr><th>Datum</th><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th></tr>';
+    my $list = '<table><tr><th>Datum</th><th>Sonntag</th><th>Montag</th><th>Dienstag</th><th>Mittwoch</th><th>Donnerstag</th><th>Freitag</th><th>Samstag</th><th>Gesamte Woche</th></tr>';
     my $weekstart = $startdate->day_of_week;
     my $week = $startdate - $weekstart;
     my $endofline = 1;
@@ -367,17 +367,23 @@ sub aggregate {
       $endofline = 0;
     }
 
+
+    my $thisweek = 0;
     for (@pricesPerDay) {
       if ($startdate->day_of_week == 0) {
 	$list .= '<tr><td>' . $startdate . '</td>';
 	$endofline = 0;
       }
       
-      my $k = $_ || 0;
+      $thisweek += $_ || 0;
+      my $k = $_ || '';
       ($list .= "<td><a href='$startdate'>$k</a></td>");
       
       
       if ($startdate->day_of_week == 6) {
+	# Gesamtwochenpreis
+	$list .= "<td>$thisweek=" . sprintf('%.2f',$thisweek/7) . "/Tag</td>";
+	$thisweek = 0;
 	$list .= '</tr>';
 	$endofline = 1;
       }
