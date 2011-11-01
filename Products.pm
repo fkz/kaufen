@@ -353,7 +353,7 @@ sub aggregate {
     $pricesPerDay[$diff] += $_->price;
     $price += $_->price;
     $table .= '<tr><td><a href=\'' . $_->date . "'>" . $_->date . '</a></td><td>' . $_->geschaeft . '</td><td>' . $_->product->description_link . '</td>' .
-     '<td>' . $_->price . '€</td></tr>';
+     '<td>' . sprintf('%.2f', $_->price) . '€</td></tr>';
   }
   $table .= '</table>';
 
