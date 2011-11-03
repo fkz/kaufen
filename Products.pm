@@ -390,7 +390,15 @@ sub aggregate {
       ++$startdate;
     }
 
-    if (!$endofline) { $list .= '</tr>'; }
+    if (!$endofline) {
+      my $tw = $startdate->day_of_week;
+      while ($startdate->day_of_week != 0) {
+	$list .= '<td></td>';
+	++$startdate;
+      }
+      $list .= "<td>$thisweek=" . sprintf('%.2f',$thisweek/$tw) . "/Tag</td>";
+      $list .= '</tr>'; 
+    }
     $list .= '</table>';
   
   if (scalar @pricesPerDay <= 1) { $list = ''; }
